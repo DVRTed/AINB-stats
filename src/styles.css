@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    background: #0f1117;
+    color: #f5f7fb;
+    font-family: "Avenir Next", "Segoe UI", sans-serif;
+  }
+}
+
+@layer components {
+  .card {
+    border: 1px solid #272c38;
+    background: #171a22;
+  }
+
+  .tooltip-change {
+    color: #8b8f99;
+    font-size: 0.9em;
+  }
+
+  .tooltip-change.positive {
+    color: #6ee7b7;
+  }
+
+  .tooltip-change.negative {
+    color: #fca5a5;
+  }
+
+}

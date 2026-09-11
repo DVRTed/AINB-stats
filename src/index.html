@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AINB stats</title>
+<link rel="stylesheet" href="./styles.css">
+<script type="module" src="./main.js"></script>
+</head>
+<body class="min-h-screen flex flex-col justify-center font-sans antialiased">
+  <main class="w-full max-w-4xl mx-auto px-5 py-6">
+    <header class="mb-4">
+      <h1 class="text-xl font-semibold tracking-tight">AINB stats</h1>
+      <p class="text-sm text-neutral-400 mt-1">
+        sourced from revisions of <a href="https://en.wikipedia.org/wiki/User:DVRTed_bot/AINB-stats.json?action=history" class="underline decoration-neutral-700 hover:decoration-neutral-400">User:DVRTed_bot/AINB-stats.json</a>
+        · all timestamps are in UTC
+      </p>
+    </header>
+
+    <div class="card rounded-lg p-3">
+      <div id="chart" class="h-[340px] w-full"></div>
+    </div>
+
+    <p id="status" class="text-sm text-red-400 mt-4"></p>
+    <footer class="text-xs text-neutral-500 mt-3 text-right">
+      <a href="https://github.com/DVRTed/AINB-stats" class="inline-flex items-center gap-1 underline decoration-neutral-700 hover:decoration-neutral-400" aria-label="Edit on GitHub">
+        <svg aria-hidden="true" class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
+          <path d="M12 2C6.48 2 2 6.58 2 12.24c0 4.52 2.87 8.35 6.84 9.71.5.1.68-.22.68-.49 0-.24-.01-1.04-.01-1.89-2.78.62-3.37-1.22-3.37-1.22-.45-1.19-1.11-1.5-1.11-1.5-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.9 1.59 2.35 1.13 2.92.86.09-.67.35-1.13.64-1.39-2.22-.26-4.55-1.14-4.55-5.06 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.28 2.75 1.05A9.2 9.2 0 0 1 12 6.9c.85 0 1.71.12 2.51.36 1.91-1.33 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.93-2.34 4.8-4.57 5.05.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.8 0 .27.18.6.69.49A10.25 10.25 0 0 0 22 12.24C22 6.58 17.52 2 12 2Z" />
+        </svg>
+        Edit on GitHub
+      </a>
+    </footer>
+  </main>
+
+</body>
+</html>
