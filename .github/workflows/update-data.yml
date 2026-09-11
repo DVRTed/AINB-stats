@@ -1,4 +1,4 @@
-name: Update Wikipedia history
+name: update data
 
 on:
   schedule:
