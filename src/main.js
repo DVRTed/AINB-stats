@@ -1,4 +1,14 @@
-import * as echarts from "echarts";
+import { init, use } from "echarts/core";
+import { LineChart } from "echarts/charts";
+import {
+  GridComponent,
+  LegendComponent,
+  TooltipComponent,
+} from "echarts/components";
+import { CanvasRenderer } from "echarts/renderers";
+import data from "../data/data.json";
+
+use([LineChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer]);
 
 const FIELDS = {
   c: "#facc15",
@@ -24,16 +34,8 @@ const timestampFormat = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 });
 
-const pageUrl = new URL(window.location.href);
-if (!pageUrl.pathname.endsWith("/")) pageUrl.pathname += "/";
-
-fetch(new URL("data.json", pageUrl))
-  .then((r) =>
-    r.ok ? r.json() : Promise.reject(new Error(`load failed (${r.status})`)),
-  )
-  .then((data) => {
-    const chart = echarts.init(document.getElementById("chart"));
-    chart.setOption({
+const chart = init(document.getElementById("chart"));
+chart.setOption({
       useUTC: true,
       animationDuration: 500,
       color: Object.values(FIELDS),
@@ -122,6 +124,4 @@ fetch(new URL("data.json", pageUrl))
       })),
     });
 
-    window.addEventListener("resize", () => chart.resize());
-  })
-  .catch((e) => (document.getElementById("status").textContent = e.message));
+window.addEventListener("resize", () => chart.resize());
