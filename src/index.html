@@ -24,10 +24,20 @@
       </header>
 
       <div class="card rounded-lg p-3">
-        <div id="chart" class="h-[340px] w-full"></div>
+        <div class="chart-container">
+          <div id="chart" class="h-[340px] w-full"></div>
+          <div
+            id="chart-loading"
+            class="chart-loading"
+            role="status"
+            aria-live="polite"
+          >
+            <span class="loading-spinner" aria-hidden="true"></span>
+            <span>Fetching data...</span>
+          </div>
+        </div>
       </div>
 
-      <p id="status" class="text-sm text-neutral-500 mt-4 min-h-[1.25rem]"></p>
       <footer class="text-xs text-neutral-500 mt-3 text-right">
         <a
           href="https://github.com/DVRTed/AINB-stats"

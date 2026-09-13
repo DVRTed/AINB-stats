@@ -40,7 +40,7 @@ const timestampFormat = new Intl.DateTimeFormat("en-US", {
 });
 
 const chart = init(document.getElementById("chart"));
-const status = document.getElementById("status");
+const chartLoading = document.getElementById("chart-loading");
 
 async function fetchData() {
   const params = new URLSearchParams({
@@ -194,16 +194,16 @@ function renderChart(data) {
   });
 }
 
-status.textContent = "Loading revision history...";
-
 fetchData()
   .then((data) => {
     if (!data.length) throw new Error("No valid revisions were found");
     renderChart(data);
-    status.textContent = `${data.length} revisions loaded`;
   })
   .catch((error) => {
-    status.textContent = `Could not load revision history: ${error.message}`;
+    console.error("Could not load revision history:", error);
+  })
+  .finally(() => {
+    chartLoading.remove();
   });
 
 window.addEventListener("resize", () => chart.resize());
