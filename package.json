@@ -5,8 +5,7 @@
     "dev": "vite"
   },
   "dependencies": {
-    "echarts": "^6.1.0",
-    "mwn": "^3.0.3"
+    "echarts": "^6.1.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.13",
