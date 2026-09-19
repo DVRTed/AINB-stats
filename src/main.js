@@ -166,7 +166,7 @@ function renderChart(data) {
       axisLabel: {
         color: "#8b8f99",
         fontSize: 11,
-        hideOverlap: false,
+        hideOverlap: true,
         formatter: (value) =>
           new Intl.DateTimeFormat("en-US", {
             month: "short",
