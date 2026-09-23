@@ -20,14 +20,16 @@ const FIELDS = {
   t: "#c084fc",
   u: "#f97316",
   i: "#22d3ee",
+  tg: "#4ade80",
 };
 const FIELD_LABELS = {
   c: "Completed",
   t: "To do",
   u: "Unnecessary",
   i: "In progress",
+  tg: "Tagged",
 };
-const INCREASE_IS_POSITIVE = new Set(["c", "u"]);
+const INCREASE_IS_POSITIVE = new Set(["c", "u", "tg"]);
 const numberFormat = new Intl.NumberFormat("en-US");
 const timestampFormat = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -96,6 +98,7 @@ async function fetchData() {
         t: json.total_todo,
         u: json.total_unnecessary,
         i: json.total_in_progress,
+        tg: typeof json.total_tagged === "number" ? json.total_tagged : 0,
       });
     }
     continuation = result.continue;
