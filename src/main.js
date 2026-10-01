@@ -16,11 +16,11 @@ use([
 ]);
 
 const FIELDS = {
-  c: "#facc15",
-  t: "#c084fc",
-  u: "#f97316",
-  i: "#22d3ee",
-  tg: "#4ade80",
+  c: "#22c55e",
+  t: "#facc15",
+  u: "#84cc16",
+  i: "#a78bfa",
+  tg: "#38bdf8",
 };
 const FIELD_LABELS = {
   c: "Completed",
