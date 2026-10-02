@@ -109,10 +109,13 @@ async function fetchData() {
 }
 
 function renderChart(data) {
+  const latest = data[data.length - 1];
+  const sortedKeys = Object.keys(FIELDS).sort((a, b) => latest[b] - latest[a]);
+
   chart.setOption({
     useUTC: true,
     animationDuration: 500,
-    color: Object.values(FIELDS),
+    color: sortedKeys.map((key) => FIELDS[key]),
     tooltip: {
       trigger: "axis",
       axisPointer: { type: "line" },
@@ -156,6 +159,7 @@ function renderChart(data) {
       itemGap: 14,
       inactiveColor: "#4c5361",
       textStyle: { color: "#b6bbc6", fontSize: 11 },
+      data: sortedKeys.map((key) => FIELD_LABELS[key]),
       selected: Object.fromEntries(
         Object.keys(FIELDS).map((key) => [FIELD_LABELS[key], true]),
       ),
@@ -185,7 +189,7 @@ function renderChart(data) {
       axisLabel: { color: "#8b8f99", fontSize: 11 },
       splitLine: { lineStyle: { color: "#1e222a" } },
     },
-    series: Object.entries(FIELDS).map(([key]) => ({
+    series: sortedKeys.map((key) => ({
       name: FIELD_LABELS[key],
       type: "line",
       smooth: true,
