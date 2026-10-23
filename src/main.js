@@ -30,6 +30,11 @@ const FIELD_LABELS = {
   tg: "Tagged",
 };
 const INCREASE_IS_POSITIVE = new Set(["c", "u", "tg"]);
+
+// revisions to exclude from the chart 
+const SKIP_REVISIONS = new Set([
+  1380028494, // AI noticeboard overhaul affected case page matching
+]);
 const numberFormat = new Intl.NumberFormat("en-US");
 const timestampFormat = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -75,6 +80,7 @@ async function fetchData() {
     const result = await response.json();
     const pages = Object.values(result.query?.pages ?? {});
     for (const revision of pages[0]?.revisions ?? []) {
+      if (SKIP_REVISIONS.has(revision.revid)) continue;
       let json;
       try {
         json = JSON.parse(revision.slots.main["*"]);
@@ -124,12 +130,12 @@ function renderChart(data) {
       textStyle: { color: "#f5f7fb" },
       formatter: (params) => {
         const timestamp = timestampFormat.format(new Date(params[0].axisValue));
+        const index = params[0].dataIndex;
         const values = params
           .map((item) => {
             const key = Object.keys(FIELDS).find(
               (field) => FIELD_LABELS[field] === item.seriesName,
             );
-            const index = item.dataIndex;
             const change =
               index > 0 ? data[index][key] - data[index - 1][key] : null;
             const changeClass =
