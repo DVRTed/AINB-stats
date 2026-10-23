@@ -2,14 +2,19 @@
   "private": true,
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "start": "serve -s dist -l ${PORT:-8000}"
   },
   "dependencies": {
-    "echarts": "^6.1.0"
+    "echarts": "^6.1.0",
+    "serve": "^14.2.6"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.13",
     "tailwindcss": "^4.1.13",
     "vite": "^7.1.7"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
   }
 }
