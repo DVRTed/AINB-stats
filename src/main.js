@@ -4,6 +4,7 @@ import {
   GridComponent,
   LegendComponent,
   TooltipComponent,
+  MarkLineComponent,
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 
@@ -12,8 +13,18 @@ use([
   GridComponent,
   LegendComponent,
   TooltipComponent,
+  MarkLineComponent,
   CanvasRenderer,
 ]);
+
+const ANNOTATIONS_API_URL = "https://en.wikipedia.org/w/api.php";
+const ANNOTATIONS_PAGE_TITLE = "User:DVRTed_bot/Annotations";
+
+const ANNOTATIONS_HEADING = /^==\s*Annotations\s*==\s*$/m;
+const ANY_HEADING = /^==[^=].*==\s*$/m;
+const ANNOTATION_LINE =
+  /^\*\s*(?<dateOrRevision>\d{4}-\d{2}-\d{2}|\d+)\s*:\s*(?<text>.+?)\s*$/;
+const DATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/;
 
 const FIELDS = {
   c: "#22c55e",
@@ -31,10 +42,13 @@ const FIELD_LABELS = {
 };
 const INCREASE_IS_POSITIVE = new Set(["c", "u", "tg"]);
 
-// revisions to exclude from the chart 
+// revisions to exclude from the chart
 const SKIP_REVISIONS = new Set([
   1380028494, // AI noticeboard overhaul affected case page matching
 ]);
+
+const ANNOTATIONS = [];
+
 const numberFormat = new Intl.NumberFormat("en-US");
 const timestampFormat = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -114,9 +128,114 @@ async function fetchData() {
   return data;
 }
 
+function parseAnnotations(wikitext) {
+  const afterHeading = wikitext.split(ANNOTATIONS_HEADING)[1];
+  if (!afterHeading) return [];
+
+  const sectionText = afterHeading.split(ANY_HEADING)[0];
+  const annotations = [];
+
+  for (const line of sectionText.split("\n")) {
+    const match = line.match(ANNOTATION_LINE);
+    if (!match) continue;
+
+    const { dateOrRevision, text } = match.groups;
+    const safeText = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    if (DATE_FORMAT.test(dateOrRevision)) {
+      annotations.push({ date: dateOrRevision, text: safeText });
+    } else {
+      annotations.push({ rev: Number(dateOrRevision), text: safeText });
+    }
+  }
+  return annotations;
+}
+
+async function fetchAnnotations() {
+  try {
+    const params = new URLSearchParams({
+      action: "query",
+      format: "json",
+      origin: "*",
+      prop: "revisions",
+      titles: ANNOTATIONS_PAGE_TITLE,
+      rvprop: "content",
+      rvslots: "main",
+    });
+
+    const response = await fetch(`${ANNOTATIONS_API_URL}?${params}`);
+    if (!response.ok)
+      throw new Error(`Wikipedia API returned ${response.status}`);
+
+    const result = await response.json();
+    const page = Object.values(result.query?.pages ?? {})[0];
+    const wikitext = page?.revisions?.[0]?.slots?.main?.["*"] ?? "";
+
+    return parseAnnotations(wikitext);
+  } catch (error) {
+    console.error("Could not load annotations:", error);
+    return [];
+  }
+}
+
+function resolveAnnotations(data) {
+  const first = new Date(data[0].d).getTime();
+  const last = new Date(data[data.length - 1].d).getTime();
+  const resolved = [];
+
+  for (const a of ANNOTATIONS) {
+    let point;
+    if (a.rev !== undefined) {
+      point = data.find((p) => p.r === a.rev);
+    } else if (a.date) {
+      const target = new Date(a.date).getTime();
+      if (target < first || target > last) point = undefined;
+      else {
+        point = data.reduce((best, p) =>
+          Math.abs(new Date(p.d) - target) < Math.abs(new Date(best.d) - target)
+            ? p
+            : best,
+        );
+      }
+    }
+    if (!point) {
+      console.warn("Annotation skipped, no matching data point:", a);
+      continue;
+    }
+    resolved.push({ ...a, point });
+  }
+  return resolved;
+}
+
+function buildAnnotationSeries(annotations) {
+  return {
+    name: "__annotations",
+    type: "line",
+    data: [],
+    markLine: {
+      silent: true,
+      symbol: "none",
+      animation: false,
+      lineStyle: { color: "#fa6e16", type: "dashed", width: 1 },
+      label: { show: false },
+      data: annotations.map((a) => ({ xAxis: a.point.d })),
+    },
+  };
+}
+
 function renderChart(data) {
   const latest = data[data.length - 1];
   const sortedKeys = Object.keys(FIELDS).sort((a, b) => latest[b] - latest[a]);
+
+  const annotations = resolveAnnotations(data);
+  const notesByRev = new Map();
+  for (const a of annotations) {
+    if (!notesByRev.has(a.point.r)) notesByRev.set(a.point.r, []);
+    notesByRev.get(a.point.r).push(a.text);
+  }
 
   chart.setOption({
     useUTC: true,
@@ -129,9 +248,15 @@ function renderChart(data) {
       borderColor: "#394151",
       textStyle: { color: "#f5f7fb" },
       formatter: (params) => {
-        const timestamp = timestampFormat.format(new Date(params[0].axisValue));
-        const index = params[0].dataIndex;
-        const values = params
+        const lineParams = params.filter((item) =>
+          Object.values(FIELD_LABELS).includes(item.seriesName),
+        );
+        if (!lineParams.length) return "";
+        const timestamp = timestampFormat.format(
+          new Date(lineParams[0].axisValue),
+        );
+        const index = lineParams[0].dataIndex;
+        const values = lineParams
           .map((item) => {
             const key = Object.keys(FIELDS).find(
               (field) => FIELD_LABELS[field] === item.seriesName,
@@ -151,7 +276,10 @@ function renderChart(data) {
             return `${item.marker}${item.seriesName}: <strong>${numberFormat.format(item.value[1])}</strong>${changeText}`;
           })
           .join("<br>");
-        return `<strong>${timestamp} UTC</strong><br>${values}`;
+        const notes = (notesByRev.get(data[index].r) ?? [])
+          .map((text) => `<div class="tooltip-note">Note: ${text}</div>`)
+          .join("");
+        return `${notes}<strong>${timestamp} UTC</strong><br>${values}`;
       },
     },
     legend: {
@@ -195,21 +323,25 @@ function renderChart(data) {
       axisLabel: { color: "#8b8f99", fontSize: 11 },
       splitLine: { lineStyle: { color: "#1e222a" } },
     },
-    series: sortedKeys.map((key) => ({
-      name: FIELD_LABELS[key],
-      type: "line",
-      smooth: true,
-      showSymbol: false,
-      lineStyle: { width: 2 },
-      emphasis: { focus: "series" },
-      data: data.map((p) => [p.d, p[key]]),
-    })),
+    series: [
+      ...sortedKeys.map((key) => ({
+        name: FIELD_LABELS[key],
+        type: "line",
+        smooth: true,
+        showSymbol: false,
+        lineStyle: { width: 2 },
+        emphasis: { focus: "series" },
+        data: data.map((p) => [p.d, p[key]]),
+      })),
+      buildAnnotationSeries(annotations),
+    ],
   });
 }
 
 fetchData()
-  .then((data) => {
+  .then(async (data) => {
     if (!data.length) throw new Error("No valid revisions were found");
+    ANNOTATIONS.push(...(await fetchAnnotations()));
     renderChart(data);
   })
   .catch((error) => {

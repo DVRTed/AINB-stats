@@ -60,3 +60,13 @@
   }
 
 }
+
+.tooltip-note {
+  margin: 0 0 6px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+  font-weight: 600;
+  white-space: normal;
+}
