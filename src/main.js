@@ -219,7 +219,7 @@ function buildAnnotationSeries(annotations) {
       silent: true,
       symbol: "none",
       animation: false,
-      lineStyle: { color: "#fa6e16", type: "dashed", width: 1 },
+      lineStyle: { color: "#8b8f99", opacity: 0.45, type: "dashed", width: 1 },
       label: { show: false },
       data: annotations.map((a) => ({ xAxis: a.point.d })),
     },
