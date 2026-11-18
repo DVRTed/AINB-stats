@@ -1,5 +1,5 @@
 import { init, use } from "echarts/core";
-import { LineChart } from "echarts/charts";
+import { LineChart, ScatterChart } from "echarts/charts";
 import {
   GridComponent,
   LegendComponent,
@@ -10,6 +10,7 @@ import { CanvasRenderer } from "echarts/renderers";
 
 use([
   LineChart,
+  ScatterChart,
   GridComponent,
   LegendComponent,
   TooltipComponent,
@@ -60,8 +61,66 @@ const timestampFormat = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 });
 
-const chart = init(document.getElementById("chart"));
+const chartEl = document.getElementById("chart");
+const chart = init(chartEl);
 const chartLoading = document.getElementById("chart-loading");
+
+const noteBar = document.createElement("div");
+Object.assign(noteBar.style, {
+  boxSizing: "border-box",
+  height: "52px",
+  marginTop: "6px",
+  padding: "8px 14px",
+  overflow: "hidden",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  textAlign: "center",
+  fontSize: "12px",
+  lineHeight: "17px",
+  color: "#b6bbc6",
+  borderRadius: "8px",
+  border: "1px solid transparent",
+  background: "transparent",
+  transition: "background 0.15s, border-color 0.15s",
+});
+chartEl.after(noteBar);
+
+let notesByRev = new Map();
+let numByRev = new Map();
+let dateByRev = new Map();
+const noteDateFormat = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+function showNote(texts, n, date) {
+  const has = texts.length > 0;
+  noteBar.innerHTML = has
+    ? `<span><strong style="color:#f5f7fb">Note ${n}${date ? ` (${date})` : ""}:</strong> ${texts.join(" · ")}</span>`
+    : "";
+  noteBar.style.color = "#b6bbc6";
+  noteBar.style.background = has ? "rgba(255,255,255,0.05)" : "transparent";
+  noteBar.style.borderColor = has ? "rgba(255,255,255,0.08)" : "transparent";
+}
+
+function showHint() {
+  noteBar.innerHTML =
+    "<span>Hover or tap an annotation to read its note</span>";
+  noteBar.style.color = "#6b7280";
+  noteBar.style.background = "transparent";
+  noteBar.style.borderColor = "transparent";
+}
+showNote([]);
+
+const showFor = (e) => {
+  const rev = e.data?.rev;
+  showNote(notesByRev.get(rev) ?? [], numByRev.get(rev), dateByRev.get(rev));
+};
+chart.on("mouseover", { seriesName: "__annotations" }, showFor);
+chart.on("click", { seriesName: "__annotations" }, showFor); // touch
 
 async function fetchData() {
   const params = new URLSearchParams({
@@ -211,17 +270,44 @@ function resolveAnnotations(data) {
 }
 
 function buildAnnotationSeries(annotations) {
+  const points = [
+    ...new Map(annotations.map((a) => [a.point.r, a.point])).values(),
+  ];
   return {
     name: "__annotations",
-    type: "line",
-    data: [],
+    type: "scatter",
+    yAxisIndex: 1, // hidden 0..1 axis: y=1 is the top edge of the plot
+    z: 10,
+    clip: false,
+    symbol: "circle",
+    symbolSize: 18,
+    itemStyle: { color: "#e5e7eb", borderColor: "#171a22", borderWidth: 2 },
+    label: {
+      show: true,
+      position: "inside",
+      color: "#171a22",
+      fontSize: 10,
+      fontWeight: "bold",
+      formatter: (p) => p.data.n,
+    },
+    emphasis: {
+      scale: 1.25,
+      itemStyle: { color: "#ffffff" },
+      label: { show: true },
+    },
+    tooltip: { show: false },
+    data: points.map((p) => ({
+      value: [p.d, 1],
+      rev: p.r,
+      n: numByRev.get(p.r),
+    })),
     markLine: {
       silent: true,
       symbol: "none",
       animation: false,
-      lineStyle: { color: "#8b8f99", opacity: 0.45, type: "dashed", width: 1 },
       label: { show: false },
-      data: annotations.map((a) => ({ xAxis: a.point.d })),
+      lineStyle: { color: "#8b8f99", opacity: 0.25, type: "solid", width: 1 },
+      data: points.map((p) => ({ xAxis: p.d })),
     },
   };
 }
@@ -231,11 +317,20 @@ function renderChart(data) {
   const sortedKeys = Object.keys(FIELDS).sort((a, b) => latest[b] - latest[a]);
 
   const annotations = resolveAnnotations(data);
-  const notesByRev = new Map();
+  notesByRev = new Map();
   for (const a of annotations) {
     if (!notesByRev.has(a.point.r)) notesByRev.set(a.point.r, []);
     notesByRev.get(a.point.r).push(a.text);
   }
+  numByRev = new Map();
+  dateByRev = new Map();
+  [...new Map(annotations.map((a) => [a.point.r, a.point])).values()]
+    .sort((x, y) => new Date(x.d) - new Date(y.d))
+    .forEach((p, i) => {
+      numByRev.set(p.r, i + 1);
+      dateByRev.set(p.r, noteDateFormat.format(new Date(p.d)));
+    });
+  if (numByRev.size) showHint();
 
   chart.setOption({
     useUTC: true,
@@ -276,10 +371,7 @@ function renderChart(data) {
             return `${item.marker}${item.seriesName}: <strong>${numberFormat.format(item.value[1])}</strong>${changeText}`;
           })
           .join("<br>");
-        const notes = (notesByRev.get(data[index].r) ?? [])
-          .map((text) => `<div class="tooltip-note">Note: ${text}</div>`)
-          .join("");
-        return `${notes}<strong>${timestamp} UTC</strong><br>${values}`;
+        return `<strong>${timestamp} UTC</strong><br>${values}`;
       },
     },
     legend: {
@@ -298,7 +390,7 @@ function renderChart(data) {
         Object.keys(FIELDS).map((key) => [FIELD_LABELS[key], true]),
       ),
     },
-    grid: { top: 42, right: 18, bottom: 28, left: 44 },
+    grid: { top: 48, right: 18, bottom: 28, left: 44 },
     xAxis: {
       type: "time",
       minInterval: 24 * 60 * 60 * 1000,
@@ -317,12 +409,15 @@ function renderChart(data) {
       },
       splitLine: { lineStyle: { color: "#1e222a" } },
     },
-    yAxis: {
-      type: "value",
-      min: 0,
-      axisLabel: { color: "#8b8f99", fontSize: 11 },
-      splitLine: { lineStyle: { color: "#1e222a" } },
-    },
+    yAxis: [
+      {
+        type: "value",
+        min: 0,
+        axisLabel: { color: "#8b8f99", fontSize: 11 },
+        splitLine: { lineStyle: { color: "#1e222a" } },
+      },
+      { type: "value", min: 0, max: 1, show: false },
+    ],
     series: [
       ...sortedKeys.map((key) => ({
         name: FIELD_LABELS[key],
