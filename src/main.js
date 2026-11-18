@@ -187,6 +187,43 @@ async function fetchData() {
   return data;
 }
 
+const WIKILINK = /\[\[([^\[\]|\n]+)(?:\|([^\[\]\n]*))?\]\]/g;
+
+const escapeHtml = (str) =>
+  str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+function renderAnnotationText(text) {
+  let out = "";
+  let last = 0;
+
+  for (const m of text.matchAll(WIKILINK)) {
+    const [page, ...rest] = m[1].trim().split("#");
+    const pageName = page.trim();
+    out += escapeHtml(text.slice(last, m.index));
+    last = m.index + m[0].length;
+
+    if (!pageName) {
+      out += escapeHtml(m[0]);
+      continue;
+    }
+
+    const path = encodeURIComponent(pageName.replace(/ /g, "_"))
+      .replace(/%3A/gi, ":")
+      .replace(/%2F/gi, "/");
+    const fragment = rest.join("#").trim();
+    const hash = fragment
+      ? "#" + encodeURIComponent(fragment.replace(/ /g, "_"))
+      : "";
+    const label = (m[2] ?? "").trim() || m[1].trim();
+
+    out +=
+      `<a href="https://en.wikipedia.org/wiki/${path}${hash}" target="_blank" rel="noopener noreferrer"` +
+      ` style="color:#e5e7eb;text-decoration:underline;text-underline-offset:2px">${escapeHtml(label)}</a>`;
+  }
+
+  return out + escapeHtml(text.slice(last));
+}
+
 function parseAnnotations(wikitext) {
   const afterHeading = wikitext.split(ANNOTATIONS_HEADING)[1];
   if (!afterHeading) return [];
@@ -199,10 +236,7 @@ function parseAnnotations(wikitext) {
     if (!match) continue;
 
     const { dateOrRevision, text } = match.groups;
-    const safeText = text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+    const safeText = renderAnnotationText(text);
 
     if (DATE_FORMAT.test(dateOrRevision)) {
       annotations.push({ date: dateOrRevision, text: safeText });
